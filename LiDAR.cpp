@@ -8,6 +8,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <fstream>
 
 #include <boost/random.hpp>
 #include <boost/math/distributions/normal.hpp>
@@ -38,6 +39,7 @@ LiDAR::LiDAR()
     m_lidarVehicle = 0;
     m_initType = _LIDAR_NOT_INIT_YET_;
     m_isAttach = false;
+    VehicleLookUpTable();
 }
 
 LiDAR::~LiDAR()
@@ -137,6 +139,7 @@ void LiDAR::Init3DLiDAR_SmplNum(float maxRange, int horizSmplNum, float horizLeL
     }
 
     m_initType = _LIDAR_INIT_AS_3D_;
+
 
 #ifdef DEBUG_CONFIG
     printf("\nDEBUG_CONFIG: function: %s", __FUNCTION__);
@@ -652,10 +655,235 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
             *p = vec_cam_coord.y;
             *(p + 1) = -vec_cam_coord.x;
             *(p + 2) = vec_cam_coord.z;
+            *(p + 3) = 0;
+            *(p + 4) = 0;
+            *(p + 5) = 0;
+            *(p + 6) = 0;
             //Need to do -0.5 as indexing starts at 0
             int i = floor(target2D(0) * s_camParams.width - 0.5);
             int j = floor(target2D(1) * s_camParams.height - 0.5);
-            *(p + 3) = m_pInstanceSeg[s_camParams.width * j + i];//We don't have the entityID if we're using the depth map
+
+            //*(p + 3) = m_pInstanceSeg[s_camParams.width * j + i];//We don't have the entityID if we're using the depth map
+            int entityID = int(m_pInstanceSeg[s_camParams.width * j + i]);
+            int ownVehicleID= PED::GET_VEHICLE_PED_IS_IN(PLAYER::PLAYER_PED_ID(), false);
+
+            /* ----------------------------------------------------- NO USE CASE: ENTITY ID -----------------------------------------------------*/
+            //Intensity value will be 0 for every point.
+            if (entityID != ownVehicleID) {
+                *(p + 3) = entityID;
+            }else{
+                *(p + 3) = 0;
+            }
+           
+            /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
+             
+            /* ----------------------------------------------------- USE CASE: IDEAL  DATASET -------------------------------------------------------------*/
+            //Intensity value will be 1 for every object of the 'Car' class (ideal segmentation).
+
+            Hash model = ENTITY::GET_ENTITY_MODEL(entityID); //Obtain vehicle model 
+
+            //Get the model string, convert it to lowercase then find it in lookup table
+            std::string modelString = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(model);
+            std::string before = modelString;
+            std::transform(modelString.begin(), modelString.end(), modelString.begin(), ::tolower);
+            std::string type = "Unknown";
+            modelString.erase(remove_if(modelString.begin(), modelString.end(), [](char c) { return !isalpha(c); }), modelString.end());
+            auto search = m_vLookupLidar.find(modelString);
+            if (search != m_vLookupLidar.end()) { //model found
+                type = search->second;
+            }
+            else { //model not found
+                *(p + 4) = 999.99;
+            }
+
+            if (type == "Car" && entityID != ownVehicleID) { //if the model is a 'Car' and not the player's vehicle, intensity is 1
+                *(p + 4) = 1.0;
+            }
+            else { //model is not a 'Car' or points are from player's own vehicle
+                *(p + 4) = 0.0;
+            }
+            /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
+
+
+            /* ----------------------------------------------------- USE CASE: ZERO INTENSITY DATASET -----------------------------------------------------*/
+            // Every point of the pointcloud has 0 intensity.
+            *(p + 5) = 0.0;
+            /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
+            
+
+            /* ----------------------------------------------------------- USE CASE: VELOCITY DATASET ------------------------------------------------------*/
+            // Obtain relative velocity in every point of the point cloud.
+            /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: PLAYER ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
+                                                                    /* :::::: PLAYER VELOCITY :::::: */
+            //Obtain the velocity vector of the vehicle the player is using.
+            Vector3 velocity_player = ENTITY::GET_ENTITY_SPEED_VECTOR(ownVehicleID, false);
+            float InstantaneousSpeedPlayer = ENTITY::GET_ENTITY_SPEED(ownVehicleID);
+
+                                                                   /* :::::: PLAYER COORDINATES :::::: */
+            //Obtain the coordinates of the vehicle the player is using.
+            Vector3 player_coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ownVehicleID, 0.0, 0.0, 0.0);
+
+            /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: OBJECT ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
+
+                                                                    /* :::::: OBJECT VELOCITY :::::: */
+            //Obtain the velocity vector of the vehicle the player is using.
+            Vector3 object_vel_vect = ENTITY::GET_ENTITY_SPEED_VECTOR(entityID, false);
+            float InstantaneousSpeedObject = ENTITY::GET_ENTITY_SPEED(entityID);
+
+            bool isPedEnt = ENTITY::IS_ENTITY_A_PED(entityID) && PED::GET_PED_TYPE(entityID) != 28;
+            bool isVehEnt = ENTITY::IS_ENTITY_A_VEHICLE(entityID);
+            bool stationaryObjt;
+
+            bool stationaryVehicle = VEHICLE::IS_VEHICLE_STOPPED(entityID);
+            bool stationaryPed = PED::IS_PED_STOPPED(entityID);
+
+            if (isPedEnt || isVehEnt) {
+                if (stationaryPed || stationaryVehicle) {
+                    stationaryObjt = true;
+                }
+                else{
+                    stationaryObjt = false;
+                }
+            }
+            else{
+                  stationaryObjt = false;
+            }
+
+             /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: POINT ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
+                                                                /* :::::: GROUND POINT COORDINATES :::::: */
+             //Convert the camera value to the ground point in world coordinates. Requires axis transformation.
+
+             Vector3 cameravalue;
+             cameravalue.x = -vec_cam_coord.x;
+             cameravalue.y = vec_cam_coord.y;
+             cameravalue.z = vec_cam_coord.z;
+
+             //PreSIL function to convert camera coordinates to world coordinates.
+             Vector3 ground_point_coordinates = camToWorld(cameravalue, cameraForwardVec, cameraRightVec, cameraUpVec);
+
+             /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: LIDAR ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
+                                                                    /* :::::: LIDAR POSITION :::::: */
+             //Obtain ground coordinates for LiDAR placement and create a new position vector. World coordinates have different depth due to
+             //vehicle or pedestrian.
+             float groundZ_player;
+             GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(player_coords.x, player_coords.y, player_coords.z, &(groundZ_player), 0);
+             Vector3 PlayerPoint;
+             PlayerPoint.x = player_coords.x + 0;
+             PlayerPoint.y = player_coords.y + 0;
+             PlayerPoint.z = groundZ_player + 1.73;
+
+                                                                /* :::::: GROUND ECHO ANGLE :::::: */
+            //Obtain the relative position of the ground point. Thus, obtaining the distance from the vehicle to the ground point.
+            Vector3 VectorDeltaPos;
+            VectorDeltaPos.x = PlayerPoint.x - ground_point_coordinates.x;
+            VectorDeltaPos.y = PlayerPoint.y - ground_point_coordinates.y;
+            VectorDeltaPos.z = PlayerPoint.z - ground_point_coordinates.z;
+
+            //Calculate the distance from the Z-axis (up) to the X-Y plane. 
+            float xydistance = sqrt(pow(VectorDeltaPos.x, 2) + pow(VectorDeltaPos.y, 2));
+
+            //Obtain the elevation angle
+            float elevationval = atan2(VectorDeltaPos.z, xydistance);
+            float elevationtoDegree = elevationval * 180 / PI; /* DEBUG ONLY*/
+
+
+                                                                    /* :::::: DIRECTION :::::: */
+            // Obtain direction only on objects that are moving
+            if ((entityID != 0) && (entityID != ownVehicleID) && (stationaryObjt == false)) {
+                /* ------------------------------------ POSITION  ------------------------------------ */
+                // Collect object and player vehicle coordinates
+
+                Vector3 object_coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(entityID, 0.0, 0.0, 0.0);
+
+                Vector3 world_coord_diff;
+                world_coord_diff.x = object_coords.x - player_coords.x;
+                world_coord_diff.y = object_coords.y - player_coords.y;
+                world_coord_diff.z = object_coords.z - player_coords.z;
+
+                float norm_world_coords = sqrt(pow(world_coord_diff.x, 2) + pow(world_coord_diff.y, 2) + pow(world_coord_diff.z, 2));
+
+                /* ------------------------------------  VELOCITY ------------------------------------ */
+                // Obtain object and player vehicle velocity vectors
+
+                // VELOCITY
+                Vector3 object_vel_vect = ENTITY::GET_ENTITY_SPEED_VECTOR(entityID, false);
+
+                Vector3 object_rel_vel_vect;
+                object_rel_vel_vect.x = object_vel_vect.x - velocity_player.x;
+                object_rel_vel_vect.y = object_vel_vect.y - velocity_player.y;
+                object_rel_vel_vect.z = object_vel_vect.z - velocity_player.z;
+
+                /* ------------------------------------  GRADIENT TO DIRECTION  ------------------------------------ */
+                float InstantaneousSpeed = sqrt(pow(object_rel_vel_vect.x, 2) + pow(object_rel_vel_vect.y, 2) + pow(object_rel_vel_vect.z, 2));
+
+                float CurrentDist = norm_world_coords;
+                float t =1; //scale factor 1 for simplicity
+
+                Vector3 New_Positionplayer;
+                New_Positionplayer.x = player_coords.x + velocity_player.x * t;
+                New_Positionplayer.y = player_coords.y + velocity_player.y * t;
+                New_Positionplayer.z = player_coords.z + velocity_player.z * t;
+
+                Vector3 New_PositionObject;
+                New_PositionObject.x = object_coords.x + object_vel_vect.x * t;
+                New_PositionObject.y = object_coords.y + object_vel_vect.y * t;
+                New_PositionObject.z = object_coords.z + object_vel_vect.z * t;
+
+                Vector3 New_Distance2;
+                New_Distance2.x = New_Positionplayer.x - New_PositionObject.x;
+                New_Distance2.y = New_Positionplayer.y - New_PositionObject.y;
+                New_Distance2.z = New_Positionplayer.z - New_PositionObject.z;
+
+                float FuturePos = sqrt(pow(New_Distance2.x, 2) + pow(New_Distance2.y, 2) + pow(New_Distance2.z, 2));
+
+                float RelativeSpeed ;
+                if (FuturePos > CurrentDist) { //departing
+                    RelativeSpeed = InstantaneousSpeed;
+                }
+                else if (FuturePos == CurrentDist) { //same speed
+                    RelativeSpeed = 0;
+                } 
+                else { //approaching
+                    RelativeSpeed = -InstantaneousSpeed;
+                }
+
+                ///* ---------------------------------------- MEASURED SPEED ---------------------------------------- */
+                //Cosine effect error of the velocity on the point.
+                float velocityMeasuredLidar = RelativeSpeed  * cos(elevationval);
+
+                *(p + 6) = velocityMeasuredLidar;
+            }
+            else if (((entityID == 0) || (stationaryObjt == true)) && (entityID != ownVehicleID)) {
+                /* ---------------------------------------- VELOCITY ------------------------------------------*/
+                //Get the player vehicle velocity vector [Vx,Vy,Vz] through a native function.
+
+                //Create a ground velocity vector. As there are no natives to acquire point velocity (only for entitys),
+                //manually create a vector with 0 velocity in each component.
+                Vector3 ground_velocity;
+                ground_velocity.x = 0;
+                ground_velocity.y = 0;
+                ground_velocity.z = 0;
+
+                //Relative velocity can be infered by subtracting each component
+                Vector3 GroundRelativeVelocity;
+                GroundRelativeVelocity.x = ground_velocity.x - velocity_player.x;
+                GroundRelativeVelocity.y = ground_velocity.y - velocity_player.y;
+                GroundRelativeVelocity.z = ground_velocity.z - velocity_player.z;
+
+
+
+                /* ---------------------------------------- MEASURED SPEED ---------------------------------------- */
+                //Cosine effect error of the velocity on the point.
+                float InstantaneousSpeed = sqrt(pow(GroundRelativeVelocity.x, 2) + pow(GroundRelativeVelocity.y, 2) + pow(GroundRelativeVelocity.z, 2));
+
+                /* ---------------------------------------- MEASURED SPEED ---------------------------------------- */
+                //Cosine effect error of the velocity on the point.
+                float velocityMeasuredLidar = -InstantaneousSpeed * cos(elevationval);
+
+                *(p + 6) = velocityMeasuredLidar;
+            }
+            /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
+
             ++m_pointsHit;
             ++m_depthMapPoints;
 
@@ -809,4 +1037,41 @@ void LiDAR::updateCurrentPosition(Vector3 cameraForwardVector, Vector3 cameraRig
     cameraForwardVec = cameraForwardVector;
     cameraRightVec = cameraRightVector;
     cameraUpVec = cameraUpVector;
+}
+
+
+void LiDAR::VehicleLookUpTable() {
+    if (!m_vLookupInitLidar) {
+        std::string translationFile = std::string(getenv("DEEPGTAV_DIR")) + "\\ObjectDet\\vehicle_labels.csv";
+        std::ifstream inFile(translationFile);
+        std::string line;
+        log("Translation file:", true);
+        log(translationFile, true);
+        while (std::getline(inFile, line)) // read whole line into line
+        {
+            std::istringstream iss(line); // string stream
+            std::string model;
+            std::string vehicleType;
+            std::getline(iss, model, ','); // read first part up to comma, ignore the comma
+            std::string before = model;
+            model.erase(remove_if(model.begin(), model.end(), [](char c) { return !isalpha(c); }), model.end());
+            iss >> vehicleType; // read the second part
+            m_vLookupLidar.insert(std::pair< std::string, std::string>(model, vehicleType));
+
+            //Modelstrings seem to be missing last few letters on occasion (this should fix that)
+            if (model.size() >= 2) {
+                model = model.substr(0, model.size() - 1);
+                m_vLookupLidar.insert(std::pair< std::string, std::string>(model, vehicleType));
+            }
+            if (model.size() >= 2) {
+                model = model.substr(0, model.size() - 1);
+                m_vLookupLidar.insert(std::pair< std::string, std::string>(model, vehicleType));
+            }
+            if (model.size() >= 2) {
+                model = model.substr(0, model.size() - 1);
+                m_vLookupLidar.insert(std::pair< std::string, std::string>(model, vehicleType));
+            }
+        }
+        m_vLookupInitLidar = true;
+    }
 }

@@ -132,6 +132,11 @@ private:
     std::string m_veloFilenameU;
     std::string m_depthPCFilenameU;
 
+    /* FILES FOR USE-CASES */
+    std::string m_velo_idealFileName;
+    std::string m_velo_zeroFileName;
+    std::string m_velo_velocityFileName;
+
     bool vehicles_created = false;
     std::vector<VehicleToCreate> vehiclesToCreate;
     std::vector<PedToCreate> pedsToCreate;
@@ -155,8 +160,8 @@ private:
     //Camera intrinsic parameters
     float intrinsics[3];
 
-    bool m_vLookupInit = false;
-    std::unordered_map<std::string, std::string> m_vLookup; //Vehicle lookup
+    //bool m_vLookupInit = false;
+    //std::unordered_map<std::string, std::string> m_vLookup; //Vehicle lookup
 
     std::unordered_map<Vehicle, std::vector<Ped>> m_pedsInVehicles;
 
@@ -167,6 +172,11 @@ public:
     void initCollection(UINT camWidth, UINT camHeight, bool exportEVE = true, int startIndex = 0);
     void setCamParams(float* forwardVec = NULL, float* rightVec = NULL, float* upVec = NULL);
     void setOwnVehicleObject();
+
+    bool m_vLookupInit = false;
+    std::unordered_map<std::string, std::string> m_vLookup; //Vehicle lookup
+    void initVehicleLookup();
+    
 
     FrameObjectInfo setDepthAndStencil(bool prevDepth = false, float* pDepth = NULL, uint8_t* pStencil = NULL);
     //Depth buffer fn/var needs to be accessed by server
@@ -247,7 +257,7 @@ private:
 
     bool hasLOSToEntity(Entity entityID, Vector3 position, Vector3 dim, Vector3 forwardVector, Vector3 rightVector, Vector3 upVector, bool useOrigin = false, Vector3 origin = createVec3(0,0,0));
 
-    void initVehicleLookup();
+    //void initVehicleLookup();
     bool isPointOccluding(Vector3 worldPos, ObjEntity* e);
     void outputOcclusion();
     void outputUnusedStencilPixels();
@@ -267,4 +277,5 @@ private:
     void checkEntity(Vehicle p, WorldObject e, Vector3 pPos, std::ostringstream& oss);
     SubsetInfo getObjectInfoSubset(Vector3 position, Vector3 forwardVector, Vector3 dim);
     Vector3 getVehicleDims(Entity e, Hash model, Vector3 &min, Vector3 &max);
+    void TrailersOnFrameID(std::vector<int>& TrailerArray);
 };

@@ -27,7 +27,7 @@ struct ObjEntity {
     int pointsHit3D;
     int pointsHit2D;
     float truncation;
-    float occlusion;
+    int occlusion;
 
     Hash model;
     std::string modelString;
@@ -60,6 +60,10 @@ struct ObjEntity {
     Vector3 rearMiddleLeft;
     Vector3 rearThirdLeft;
     Vector3 rearTopExactLeft;
+
+    /* NEW */
+    Vector3 object_vel_vector;
+    Vector3 ownvehicle_vel_vector;
 
     ObjEntity(int _entityID) : entityID(_entityID) {};
     ObjEntity() {};

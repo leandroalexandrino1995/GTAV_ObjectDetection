@@ -118,6 +118,9 @@ private:
     float m_vertiResolu;//deg, vertical angle resolution
     float m_horizResolu;//deg, horizontal angle resolution
 
+    bool m_vLookupInitLidar = false;
+    std::unordered_map<std::string, std::string> m_vLookupLidar; //Vehicle lookup
+
     Cam m_camera;
     Entity m_lidarVehicle;
     float m_quaterion[4];
@@ -150,4 +153,7 @@ private:
     float * m_updatedPointCloud;
     Vector3 get3DFromDepthTarget(Vector3 target, Eigen::Vector2f target2D);
     std::vector<Hit2DDepth> m_hitDepthPoints;
+
+
+    void VehicleLookUpTable(void);
 };

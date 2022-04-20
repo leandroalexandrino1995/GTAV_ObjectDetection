@@ -407,46 +407,46 @@ BBox2D ObjectDetection::BBox2DFrom3DObject(Vector3 position, Vector3 dim, Vector
                 pos.z = position.z + forward * dim.y*forwardVector.z + right * dim.x*rightVector.z + up * dim.z*upVector.z;
 
                 float screenX, screenY;
-                //This function always returns false, do not worry about return value
-                bool success = GRAPHICS::_WORLD3D_TO_SCREEN2D(pos.x, pos.y, pos.z, &screenX, &screenY);
+//This function always returns false, do not worry about return value
+bool success = GRAPHICS::_WORLD3D_TO_SCREEN2D(pos.x, pos.y, pos.z, &screenX, &screenY);
 
-                std::ostringstream oss2;
-                oss2 << "\nnew ScreenX: " << screenX << " ScreenY: " << screenY;
-                std::string str2 = oss2.str();
-                log(str2);
+std::ostringstream oss2;
+oss2 << "\nnew ScreenX: " << screenX << " ScreenY: " << screenY;
+std::string str2 = oss2.str();
+log(str2);
 
-                //Calculate with eigen if off-screen
-                Eigen::Vector3f pt(pos.x, pos.y, pos.z);
-                if (screenX < 0 || screenX > 1 || screenY < 0 || screenY > 1) {
-                    Eigen::Vector2f uv = get_2d_from_3d(pt);
-                    screenX = uv(0);
-                    screenY = uv(1);
-                }
+//Calculate with eigen if off-screen
+Eigen::Vector3f pt(pos.x, pos.y, pos.z);
+if (screenX < 0 || screenX > 1 || screenY < 0 || screenY > 1) {
+    Eigen::Vector2f uv = get_2d_from_3d(pt);
+    screenX = uv(0);
+    screenY = uv(1);
+}
 
-                if (CORRECT_2D_POINTS_BEHIND_CAMERA) {
-                    //Corrections for points which are behind camera
-                    Vector3 relativePos;
-                    relativePos.x = pos.x - s_camParams.pos.x;
-                    relativePos.y = pos.y - s_camParams.pos.y;
-                    relativePos.z = pos.z - s_camParams.pos.z;
-                    relativePos = convertCoordinateSystem(relativePos, m_camForwardVector, m_camRightVector, m_camUpVector);
+if (CORRECT_2D_POINTS_BEHIND_CAMERA) {
+    //Corrections for points which are behind camera
+    Vector3 relativePos;
+    relativePos.x = pos.x - s_camParams.pos.x;
+    relativePos.y = pos.y - s_camParams.pos.y;
+    relativePos.z = pos.z - s_camParams.pos.z;
+    relativePos = convertCoordinateSystem(relativePos, m_camForwardVector, m_camRightVector, m_camUpVector);
 
-                    //If behind camera update left/right bounds to reflect its position
-                    if (relativePos.y < 0) {
-                        if (relativePos.x > 0) {
-                            screenX = 1.0;
-                        }
-                        else {
-                            screenX = 0.0;
-                        }
-                    }
-                }
+    //If behind camera update left/right bounds to reflect its position
+    if (relativePos.y < 0) {
+        if (relativePos.x > 0) {
+            screenX = 1.0;
+        }
+        else {
+            screenX = 0.0;
+        }
+    }
+}
 
-                //Update if value outside current box
-                if (screenX < bbox2d.left) bbox2d.left = screenX;
-                if (screenX > bbox2d.right) bbox2d.right = screenX;
-                if (screenY < bbox2d.top) bbox2d.top = screenY;
-                if (screenY > bbox2d.bottom) bbox2d.bottom = screenY;
+//Update if value outside current box
+if (screenX < bbox2d.left) bbox2d.left = screenX;
+if (screenX > bbox2d.right) bbox2d.right = screenX;
+if (screenY < bbox2d.top) bbox2d.top = screenY;
+if (screenY > bbox2d.bottom) bbox2d.bottom = screenY;
             }
         }
     }
@@ -493,7 +493,8 @@ bool ObjectDetection::checkDirection(Vector3 unit, Vector3 point, Vector3 min, V
 }
 
 //Point and objPos should be in world coordinates
-void ObjectDetection::setEntityBBoxParameters(ObjEntity *e) {
+void ObjectDetection::setEntityBBoxParameters(ObjEntity* e) {
+
     //Added BBOX_ADJUSTMENT_FACTOR as detailed models sometimes go outside 3D bboxes
     Vector3 forward; forward.y = e->dim.y * BBOX_ADJUSTMENT_FACTOR; forward.x = 0; forward.z = 0;
     forward = convertCoordinateSystem(forward, e->yVector, e->xVector, e->zVector);
@@ -1013,6 +1014,22 @@ void ObjectDetection::addSegmentedPoint3D(int i, int j, ObjEntity *e) {
         }
     }
 
+    /* TESTE */
+    //List of trailers to be considered for towing purposes
+    //std::list<std::string> list_of_trailers = { "TRAILERLARGE", "TRAILER","TRAILERS3", "DOCKTRAILER","TR2","TANKER","TRAILERL","ARMYTRAILER","TR3"};
+    //Hash model = ENTITY::GET_ENTITY_MODEL(e->entityID);
+    //std::string modelString = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(model);
+    //std::list<std::string>::iterator it;
+    //it = std::find(list_of_trailers.begin(), list_of_trailers.end(), modelString);
+    //if (it != list_of_trailers.end()) //It's a car
+    //{
+    //    Entity TruckAttached = ENTITY::GET_ENTITY_ATTACHED_TO(e->entityID);
+    //    if (TruckAttached != 0) { // Detects if truck has a trailer
+    //        e->entityID = TruckAttached;
+    //    }
+    //}
+    /* FIM */
+
     if (i < e->bbox2d.left) e->bbox2d.left = i;
     if (i > e->bbox2d.right) e->bbox2d.right = i;
     if (j < e->bbox2d.top) e->bbox2d.top = j;
@@ -1033,7 +1050,7 @@ void ObjectDetection::addPointToSegImages(int i, int j, int entityID) {
     int idx = j * s_camParams.width + i;
 
     //instance seg is image with exact entityIDs
-    m_pInstanceSeg[idx] = (uint32_t)entityID;
+    m_pInstanceSeg[idx] = (uint32_t)entityID; 
 
     //RGB image is 3 bytes per pixel
     int segIdx = 3 * idx;
@@ -1100,11 +1117,22 @@ void ObjectDetection::processOcclusionForEntity(ObjEntity *e, const Vector3 &xVe
         }
     }
 
-    e->occlusion = 1.0;
+    float occtreshold = 1.0;
+    
     int divisor = occlusionPointCount + e->pointsHit2D;
     if (divisor != 0) {
-        e->occlusion = (float)occlusionPointCount / (float)(divisor);
+        occtreshold = (float)occlusionPointCount / (float)(divisor);
     }
+    if (occtreshold < 0.2) {
+        e->occlusion = 0;
+    }
+    else if (occtreshold < 0.6) {
+        e->occlusion = 1;
+    }
+    else {
+        e->occlusion = 2;
+    }
+    
 }
 
 //dim is in full width/height/length
@@ -1183,6 +1211,7 @@ bool ObjectDetection::getEntityVector(ObjEntity &entity, int entityID, Hash mode
     Vector3 min;
     Vector3 max;
     Vector3 speedVector;
+
     float heading, speed;
 
     ENTITY::GET_ENTITY_MATRIX(entityID, &forwardVector, &rightVector, &upVector, &position); //Blue or red pill
@@ -1209,6 +1238,7 @@ bool ObjectDetection::getEntityVector(ObjEntity &entity, int entityID, Hash mode
 
         speed = ENTITY::GET_ENTITY_SPEED(entityID);
 
+        
         GAMEPLAY::GET_MODEL_DIMENSIONS(model, &min, &max);
 
         //Need to adjust dimensions for pedestrians
@@ -1432,7 +1462,8 @@ bool ObjectDetection::getEntityVector(ObjEntity &entity, int entityID, Hash mode
         entity.pitch = pitch;
         entity.roll = roll;
         entity.model = model;
-        entity.modelString = modelString;
+        //entity.modelString = modelString;
+        entity.modelString = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(model);
         entity.objType = type;
 
         if (trackFirstFrame.find(entityID) == trackFirstFrame.end()) {
@@ -1446,6 +1477,9 @@ bool ObjectDetection::getEntityVector(ObjEntity &entity, int entityID, Hash mode
         entity.xVector = xVector;
         entity.yVector = yVector;
         entity.zVector = zVector;
+
+        entity.object_vel_vector = speedVector;
+        entity.ownvehicle_vel_vector = ENTITY::GET_ENTITY_SPEED_VECTOR(m_ownVehicle, false);
         log("End of getEntityVector");
     }
 
@@ -1495,21 +1529,24 @@ void ObjectDetection::setVehiclesList() {
         }
 
         if (type == "Unknown") {
-            if (VEHICLE::IS_THIS_MODEL_A_CAR(model)) type = "Car";
-            else if (VEHICLE::IS_THIS_MODEL_A_BIKE(model)) type = "Moterbike";
-            else if (VEHICLE::IS_THIS_MODEL_A_BICYCLE(model)) type = "Cyclist";
-            else if (VEHICLE::IS_THIS_MODEL_A_QUADBIKE(model)) type = "Moterbike";
-            else if (VEHICLE::IS_THIS_MODEL_A_BOAT(model)) type = "Boat";
-            else if (VEHICLE::IS_THIS_MODEL_A_PLANE(model)) type = "Airplane";
-            else if (VEHICLE::IS_THIS_MODEL_A_HELI(model)) type = "Airplane";
-            else if (VEHICLE::IS_THIS_MODEL_A_TRAIN(model)) type = "Railed";
-            else if (VEHICLE::_IS_THIS_MODEL_A_SUBMERSIBLE(model)) type = "Boat";
+            if (VEHICLE::IS_THIS_MODEL_A_CAR(model)) type = "UNK";
+            else if (VEHICLE::IS_THIS_MODEL_A_BIKE(model)) type = "UNK";
+            else if (VEHICLE::IS_THIS_MODEL_A_BICYCLE(model)) type = "UNK";
+            else if (VEHICLE::IS_THIS_MODEL_A_QUADBIKE(model)) type = "UNK";
+            else if (VEHICLE::IS_THIS_MODEL_A_BOAT(model)) type = "UNK";
+            else if (VEHICLE::IS_THIS_MODEL_A_PLANE(model)) type = "UNK";
+            else if (VEHICLE::IS_THIS_MODEL_A_HELI(model)) type = "UNK";
+            else if (VEHICLE::IS_THIS_MODEL_A_TRAIN(model)) type = "UNK";
+            else if (VEHICLE::_IS_THIS_MODEL_A_SUBMERSIBLE(model)) type = "UNK";
         }
 
         ObjEntity objEntity;
         //Gets set to false in getEntityVector if outside SECONDARY_PERSPECTIVE_RANGE or if vehicle is unoccupied
         bool nearbyVehicle = true;
         bool success = getEntityVector(objEntity, vehicles[i], model, classid, type, modelString, false, -1, nearbyVehicle);
+
+
+
         if (success) {
             if (m_curFrame.vehicles.find(objEntity.entityID) == m_curFrame.vehicles.end()) {
                 m_curFrame.vehicles.insert(std::pair<int, ObjEntity>(objEntity.entityID, objEntity));
@@ -1558,7 +1595,7 @@ void ObjectDetection::setPedsList() {
         std::string type = "Pedestrian";
         if (PED::GET_PED_TYPE(peds[i]) == 28) {
             classid = 11; //animal
-            type = "Animal";
+            type = "Misc";
         }
         else classid = PEDESTRIAN_CLASS_ID;
 
@@ -1586,6 +1623,12 @@ void ObjectDetection::setFilenames() {
     m_labelsFilename = getStandardFilename("label_2", ".txt");
     m_labelsAugFilename = getStandardFilename("label_aug_2", ".txt");
     m_calibFilename = getStandardFilename("calib", ".txt");
+
+    //Use case files
+    m_velo_idealFileName = getStandardFilename("velodyne_ideal", ".bin");
+    m_velo_zeroFileName = getStandardFilename("velodyne_zero", ".bin");
+    m_velo_velocityFileName = getStandardFilename("velodyne_velocity", ".bin");
+
 
     //TODO - Why are two seg images being printed (there are some minor differences in images it appears)
     m_segImgFilename = getStandardFilename("segImage", ".png");
@@ -1647,11 +1690,89 @@ void ObjectDetection::setupLiDAR() {
 void ObjectDetection::collectLiDAR() {
     m_entitiesHit.clear();
     lidar.updateCurrentPosition(m_camForwardVector, m_camRightVector, m_camUpVector);
-    float * pointCloud = lidar.GetPointClouds(pointCloudSize, &m_entitiesHit, lidar_param, m_pDepth, m_pInstanceSeg, m_vehicle);
+    float *pointCloud = lidar.GetPointClouds(pointCloudSize, &m_entitiesHit, lidar_param, m_pDepth, m_pInstanceSeg, m_vehicle);
 
+    // Output point clouds dimensions
+    uint OUTPUT_POINTCLOUD_POINTS = 4;
+
+    // Create new arrays with the points as pointCloud will have all the offsets.
+    float* IdealArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* EntityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* ZeroIntensityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* VelocityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+
+    int i = 0, k=0;
+    while( i < (pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS)) {
+
+        // No use case: intensity is the entity ID of each object
+        // *(p + 3)
+        *(EntityArray + i) = pointCloud[k];
+        *(EntityArray + i + 1) = pointCloud[k + 1];
+        *(EntityArray + i + 2) = pointCloud[k + 2];
+        *(EntityArray + i + 3) = pointCloud[k + 3];
+
+
+        // Use case: Ideal dataset -> 'Car' labeled objects = 1, others = '0'
+        // *(p + 4)
+        *(IdealArray + i) = pointCloud[k];
+        *(IdealArray + i + 1) = pointCloud[k + 1];
+        *(IdealArray + i + 2) = pointCloud[k + 2];
+        *(IdealArray + i + 3) = pointCloud[k + 4];
+
+        // Use case: Zero intensity dataset -> all points have 0 intensity
+        // *(p + 5)
+        *(ZeroIntensityArray + i) = pointCloud[k];
+        *(ZeroIntensityArray + i + 1) = pointCloud[k + 1];
+        *(ZeroIntensityArray + i + 2) = pointCloud[k + 2];
+        *(ZeroIntensityArray + i + 3) = pointCloud[k + 5];
+
+        // Use case: Zero intensity dataset -> all points have 0 intensity
+        // *(p + 5)
+        *(ZeroIntensityArray + i) = pointCloud[k];
+        *(ZeroIntensityArray + i + 1) = pointCloud[k + 1];
+        *(ZeroIntensityArray + i + 2) = pointCloud[k + 2];
+        *(ZeroIntensityArray + i + 3) = pointCloud[k + 5];
+
+        // Use case: Zero intensity dataset -> all points have 0 intensity
+        // *(p + 5)
+        *(VelocityArray + i) = pointCloud[k];
+        *(VelocityArray + i + 1) = pointCloud[k + 1];
+        *(VelocityArray + i + 2) = pointCloud[k + 2];
+        *(VelocityArray + i + 3) = pointCloud[k + 6];
+
+
+        i += 4; //Update according to output pointclouds dimensions
+        k += 7; //Update according to  lidar.GetPointClouds() dimensions (FLOATS_PER_POINT)
+    }
+
+    /* -------------------------- OUTPUT FILES -------------------------------------------------------*/
+
+    // No use case: entity ID as intensity
+    // Folder: velodyne
     std::ofstream ofile(m_veloFilename, std::ios::binary);
-    ofile.write((char*)pointCloud, FLOATS_PER_POINT * sizeof(float)*pointCloudSize);
+    ofile.write((char*)EntityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
     ofile.close();
+
+    // USE CASE: Ideal dataset -> Car = 1, others = 0
+    // Folder: velodyne_ideal
+    std::ofstream ofileideal(m_velo_idealFileName, std::ios::binary);
+    ofileideal.write((char*)IdealArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofileideal.close();
+
+    // USE CASE: Zero intensity dataset -> all = 0
+    // Folder: velodyne_zero
+    std::ofstream ofilezero(m_velo_zeroFileName, std::ios::binary);
+    ofilezero.write((char*)ZeroIntensityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofilezero.close();
+
+
+    // USE CASE: Velocity dataset -> relative velocity on each point
+    // Folder: velodyne_velocity
+    std::ofstream ofilevel(m_velo_velocityFileName, std::ios::binary);
+    ofilevel.write((char*)VelocityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofilevel.close();
+
+
 
     if (OUTPUT_RAYCAST_POINTS) {
         int pointCloudSize2;
@@ -2331,7 +2452,7 @@ void ObjectDetection::exportEntity(ObjEntity e, std::ostringstream& oss, bool un
     if (augmented) {
         int vPedIsIn = e.isPedInV ? e.vPedIsIn : 0;
         oss << " " << e.entityID << " " << e.pointsHit2D << " " << e.pointsHit3D << " " << e.speed << " "
-            << e.roll << " " << e.pitch << " " << e.modelString << " " << vPedIsIn;
+            << e.roll << " " << e.pitch << " " << e.modelString << " " << vPedIsIn << " " << e.object_vel_vector.x << " " << e.object_vel_vector.y << " " << e.object_vel_vector.z << " " << e.ownvehicle_vel_vector.x << " " << e.ownvehicle_vel_vector.y << " " << e.ownvehicle_vel_vector.z;
     }
     oss << "\n";
 }
@@ -2609,4 +2730,28 @@ SubsetInfo ObjectDetection::getObjectInfoSubset(Vector3 position, Vector3 forwar
     s.alpha_kitti = s.rot_y + s.beta_kitti - PI / 2;
 
     return s;
+}
+
+
+
+void ObjectDetection::TrailersOnFrameID(std::vector<int>& TrailerArray) {
+    const int ARR_SIZE = 1024;
+    Vehicle vehicles[ARR_SIZE];
+
+    int count = worldGetAllVehicles(vehicles, ARR_SIZE);
+    for (int i = 0; i < count; i++) {
+        if (vehicles[i] == m_ownVehicle) continue; //Don't process perspective car!
+
+        Hash model = ENTITY::GET_ENTITY_MODEL(vehicles[i]);
+        std::string modelString = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(model);
+
+        //List of trailers to be considered for towing purposes
+        std::list<std::string> list_of_trailers = { "TRAILERLARGE", "TRAILER", "DOCKTRAILER","TR2","TANKER","TRAILERL","ARMYTRAILER","TR3","TRAILERS3"};
+        std::list<std::string>::iterator it;
+        it = std::find(list_of_trailers.begin(), list_of_trailers.end(), modelString);
+        if (it != list_of_trailers.end()) //It's a car
+        {
+            TrailerArray.push_back(vehicles[i]);
+        }
+    }
 }

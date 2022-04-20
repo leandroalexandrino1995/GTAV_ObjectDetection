@@ -8,9 +8,9 @@ static const Eigen::Vector3f WORLD_UP(0.0, 0.0, 1.0);
 static const Eigen::Vector3f WORLD_EAST(1.0, 0.0, 0.0);
 
 //Floats per point in the pointcloud (x, y, z, reflectance)
-const int FLOATS_PER_POINT = 4;
-const float MAX_LIDAR_DIST = 120.0f;//in metres
-const int OBJECT_MAX_DIST = 200;//in metres (label_aug will have objects past this value)
+const int FLOATS_PER_POINT = 7;
+const float MAX_LIDAR_DIST = 69.12f;//in metres
+const int OBJECT_MAX_DIST = 69;//in metres (label_aug will have objects past this value)
 
 const float CAM_OFFSET_FORWARD = 0;// .5;
 const float CAM_OFFSET_UP = 1.065;
@@ -62,7 +62,7 @@ const bool OUTPUT_ADJUSTED_POINTS = false;
 //2d points will be shrunk with stencil cull
 const bool CORRECT_2D_POINTS_BEHIND_CAMERA = false;
 
-const bool LIDAR_GAUSSIAN_NOISE = true;
+const bool LIDAR_GAUSSIAN_NOISE = false;
 const double DEPTH_NOISE_STDDEV = 0.006;//3 standard deviations is approximately 2cm
 const double DEPTH_NOISE_MEAN = 0.0;
 
@@ -88,7 +88,7 @@ const bool OUTPUT_STENCIL_IMAGE = false;
 const bool ONLY_OUTPUT_UNKNOWN_STENCILS = true;
 
 //If set to true DeepGTAV outputs all information from nearby vehicles within specified range
-const bool GENERATE_SECONDARY_PERSPECTIVES = true;
+const bool GENERATE_SECONDARY_PERSPECTIVES = false;
 const int SECONDARY_PERSPECTIVE_RANGE = 100;
 //Only generates secondary perspectives from occupied vehicles (prevents capturing parking garages)
 //This should be set to true except for stationary scenarios
@@ -96,7 +96,7 @@ const bool ONLY_OCCUPIED_VEHICLES = true;
 const bool TRUPERCEPT_SCENARIO = false;
 
 //Outputs self location (For finding spots for stationary scenes)
-const bool OUTPUT_SELF_LOCATION = false;
+const bool OUTPUT_SELF_LOCATION = true;
 
 //Outputs unprocessed labels file (for testing)
 const bool OUTPUT_UNPROCESSED_LABELS = false;
