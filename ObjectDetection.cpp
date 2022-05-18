@@ -13,6 +13,8 @@
 #include <sstream>
 #include "lodepng.h"
 
+#include "LiDAR.h"
+
 ObjectDetection::ObjectDetection()
 {
 }
@@ -1208,11 +1210,14 @@ bool ObjectDetection::getEntityVector(ObjEntity &entity, int entityID, Hash mode
     Vector3 BLL; //Back Lower Left
     Vector3 dim; //Vehicle dimensions
     Vector3 upVector, rightVector, forwardVector, position; //Vehicle position
+    Vector3 m_upVector, m_rightVector, m_forwardVector, m_position; //Own Vehicle position
     Vector3 min;
     Vector3 max;
     Vector3 speedVector;
 
     float heading, speed;
+
+    ENTITY::GET_ENTITY_MATRIX(m_vehicle, &m_forwardVector, &m_rightVector, &m_upVector, &m_position); //Blue or red pill
 
     ENTITY::GET_ENTITY_MATRIX(entityID, &forwardVector, &rightVector, &upVector, &position); //Blue or red pill
     float distance = sqrt(SYSTEM::VDIST2(s_camParams.pos.x, s_camParams.pos.y, s_camParams.pos.z, position.x, position.y, position.z));
@@ -1478,8 +1483,12 @@ bool ObjectDetection::getEntityVector(ObjEntity &entity, int entityID, Hash mode
         entity.yVector = yVector;
         entity.zVector = zVector;
 
-        entity.object_vel_vector = speedVector;
-        entity.ownvehicle_vel_vector = ENTITY::GET_ENTITY_SPEED_VECTOR(m_ownVehicle, false);
+        entity.SpeedVectorWC = speedVector;
+
+        entity.object_vel_vector = convertCoordinateSystem(speedVector, m_forwardVector, m_rightVector, m_upVector);
+        //entity.object_vel_vector = speedVector;
+        Vector3 own_vehicle_velocity= ENTITY::GET_ENTITY_SPEED_VECTOR(m_ownVehicle, false);
+        entity.ownvehicle_vel_vector = convertCoordinateSystem(own_vehicle_velocity, m_forwardVector, m_rightVector, m_upVector);
         log("End of getEntityVector");
     }
 
@@ -2452,7 +2461,7 @@ void ObjectDetection::exportEntity(ObjEntity e, std::ostringstream& oss, bool un
     if (augmented) {
         int vPedIsIn = e.isPedInV ? e.vPedIsIn : 0;
         oss << " " << e.entityID << " " << e.pointsHit2D << " " << e.pointsHit3D << " " << e.speed << " "
-            << e.roll << " " << e.pitch << " " << e.modelString << " " << vPedIsIn << " " << e.object_vel_vector.x << " " << e.object_vel_vector.y << " " << e.object_vel_vector.z << " " << e.ownvehicle_vel_vector.x << " " << e.ownvehicle_vel_vector.y << " " << e.ownvehicle_vel_vector.z;
+            << e.roll << " " << e.pitch << " " << e.modelString << " " << vPedIsIn << " " << e.object_vel_vector.x << " " << e.object_vel_vector.y << " " << e.object_vel_vector.z << " " << e.ownvehicle_vel_vector.x << " " << e.ownvehicle_vel_vector.y << " " << e.ownvehicle_vel_vector.z << " " << e.SpeedVectorWC.x << " " << e.SpeedVectorWC.y << " " << e.SpeedVectorWC.z;
     }
     oss << "\n";
 }

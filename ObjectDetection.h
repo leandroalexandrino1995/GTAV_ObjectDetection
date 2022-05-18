@@ -10,6 +10,7 @@
 #include <opencv2\opencv.hpp>
 #include <boost/shared_ptr.hpp>
 
+
 //#define DEBUG 1
 
 struct WorldObject {
@@ -74,6 +75,11 @@ private:
     Vector3 m_camForwardVector;
     Vector3 m_camRightVector;
     Vector3 m_camUpVector;
+
+    Vector3 entity_camForwardVector;
+    Vector3 entity_camRightVector;
+    Vector3 entity_camUpVector;
+    Vector3 entity_currentPos;
 
     bool running = false;
 

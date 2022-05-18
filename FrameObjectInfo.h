@@ -63,6 +63,7 @@ struct ObjEntity {
 
     /* NEW */
     Vector3 object_vel_vector;
+    Vector3 SpeedVectorWC;
     Vector3 ownvehicle_vel_vector;
 
     ObjEntity(int _entityID) : entityID(_entityID) {};

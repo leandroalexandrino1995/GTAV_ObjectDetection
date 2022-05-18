@@ -16,6 +16,9 @@ https://github.com/gdpinchina/A-virtual-LiDAR-for-DeepGTAV
 #define _LIDAR_INIT_AS_3D_ 2
 
 const int MAX_POINTS = 5000000;
+extern Vector3 Camera_Obj_fwd;
+extern Vector3 Camera_Obj_right;
+extern Vector3 Camera_Obj_up;
 
 struct HitLidarEntity {
     int pointsHit;
@@ -131,6 +134,7 @@ private:
     Vector3 cameraForwardVec;
     Vector3 cameraUpVec;
     Vector3 cameraRightVec;
+    
 
     float m_max_dist;
     float m_min_dist;

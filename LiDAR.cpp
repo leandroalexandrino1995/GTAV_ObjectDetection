@@ -551,6 +551,7 @@ Vector3 LiDAR::get3DFromDepthTarget(Vector3 target, Eigen::Vector2f target2D){
     //To convert from world coordinates to GTA vehicle coordinates (where y axis is forward)
     Vector3 vec_cam_coord = convertCoordinateSystem(depthEndCoord, cameraForwardVec, cameraRightVec, cameraUpVec);
 
+
     /*std::ostringstream oss2;
     oss2 << "***unitVec is: " << unitVec.x << ", " << unitVec.y << ", " << unitVec.z <<
     "\n depthEndCoord is: " << depthEndCoord.x << ", " << depthEndCoord.y << ", " << depthEndCoord.z <<
@@ -667,18 +668,7 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
             int entityID = int(m_pInstanceSeg[s_camParams.width * j + i]);
             int ownVehicleID= PED::GET_VEHICLE_PED_IS_IN(PLAYER::PLAYER_PED_ID(), false);
 
-            /* ----------------------------------------------------- NO USE CASE: ENTITY ID -----------------------------------------------------*/
-            //Intensity value will be 0 for every point.
-            if (entityID != ownVehicleID) {
-                *(p + 3) = entityID;
-            }else{
-                *(p + 3) = 0;
-            }
-           
-            /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
-             
-            /* ----------------------------------------------------- USE CASE: IDEAL  DATASET -------------------------------------------------------------*/
-            //Intensity value will be 1 for every object of the 'Car' class (ideal segmentation).
+
 
             Hash model = ENTITY::GET_ENTITY_MODEL(entityID); //Obtain vehicle model 
 
@@ -693,9 +683,23 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
                 type = search->second;
             }
             else { //model not found
-                *(p + 4) = 999.99;
+                *(p + 4) = 0;
+                *(p + 3) = 0;
             }
 
+            /* ----------------------------------------------------- NO USE CASE: ENTITY ID FOR IDEAL SEGMENTATION -----------------------------------------------------*/
+            //Intensity value will be 0 for every point.
+            //if (entityID != ownVehicleID && type == "Car") {
+            if (type == "Car") {
+                *(p + 3) = entityID;
+            }
+            else {
+                *(p + 3) = 0;
+            }
+
+            /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
+            /* ----------------------------------------------------- USE CASE: IDEAL  DATASET -------------------------------------------------------------*/
+            //Intensity value will be 1 for every object of the 'Car' class (ideal segmentation).
             if (type == "Car" && entityID != ownVehicleID) { //if the model is a 'Car' and not the player's vehicle, intensity is 1
                 *(p + 4) = 1.0;
             }
@@ -775,9 +779,9 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
                                                                 /* :::::: GROUND ECHO ANGLE :::::: */
             //Obtain the relative position of the ground point. Thus, obtaining the distance from the vehicle to the ground point.
             Vector3 VectorDeltaPos;
-            VectorDeltaPos.x = PlayerPoint.x - ground_point_coordinates.x;
-            VectorDeltaPos.y = PlayerPoint.y - ground_point_coordinates.y;
-            VectorDeltaPos.z = PlayerPoint.z - ground_point_coordinates.z;
+            VectorDeltaPos.x = ground_point_coordinates.x - PlayerPoint.x;
+            VectorDeltaPos.y = ground_point_coordinates.y - PlayerPoint.y;
+            VectorDeltaPos.z = ground_point_coordinates.z - PlayerPoint.z;
 
             //Calculate the distance from the Z-axis (up) to the X-Y plane. 
             float xydistance = sqrt(pow(VectorDeltaPos.x, 2) + pow(VectorDeltaPos.y, 2));
