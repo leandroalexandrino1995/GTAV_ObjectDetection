@@ -61,10 +61,13 @@ struct ObjEntity {
     Vector3 rearThirdLeft;
     Vector3 rearTopExactLeft;
 
-    /* NEW */
-    Vector3 object_vel_vector;
-    Vector3 SpeedVectorWC;
-    Vector3 ownvehicle_vel_vector;
+    /* New augmented label outputs */
+    Vector3 entity_velocity_vector;
+    Vector3 own_vehicle_velocity_vector;
+    Vector3 entity_world_coordinates;
+    Vector3 player_world_coordinates;
+    Vector3 entity_velocity_vector_camcoords;
+    Vector3 own_vehicle_velocity_vector_camcoords;
 
     ObjEntity(int _entityID) : entityID(_entityID) {};
     ObjEntity() {};

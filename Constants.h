@@ -8,7 +8,7 @@ static const Eigen::Vector3f WORLD_UP(0.0, 0.0, 1.0);
 static const Eigen::Vector3f WORLD_EAST(1.0, 0.0, 0.0);
 
 //Floats per point in the pointcloud (x, y, z, reflectance)
-const int FLOATS_PER_POINT = 7;
+const int FLOATS_PER_POINT = 8;
 const float MAX_LIDAR_DIST = 69.12f;//in metres
 const int OBJECT_MAX_DIST = 69;//in metres (label_aug will have objects past this value)
 
