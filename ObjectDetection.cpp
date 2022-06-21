@@ -1483,12 +1483,24 @@ bool ObjectDetection::getEntityVector(ObjEntity &entity, int entityID, Hash mode
         entity.yVector = yVector;
         entity.zVector = zVector;
 
-        entity.SpeedVectorWC = speedVector;
 
-        entity.object_vel_vector = convertCoordinateSystem(speedVector, m_forwardVector, m_rightVector, m_upVector);
-        //entity.object_vel_vector = speedVector;
-        Vector3 own_vehicle_velocity= ENTITY::GET_ENTITY_SPEED_VECTOR(m_ownVehicle, false);
-        entity.ownvehicle_vel_vector = convertCoordinateSystem(own_vehicle_velocity, m_forwardVector, m_rightVector, m_upVector);
+        Vector3 own_vehicle_velocity = ENTITY::GET_ENTITY_SPEED_VECTOR(m_ownVehicle, false);
+        Vector3 entity_velocity = ENTITY::GET_ENTITY_SPEED_VECTOR(entityID, false);
+
+        entity.entity_velocity_vector = speedVector;
+
+        entity.own_vehicle_velocity_vector = own_vehicle_velocity;
+
+        entity.entity_world_coordinates = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(entityID, 0.0, 0.0, 0.0);
+
+        entity.player_world_coordinates = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(m_ownVehicle, 0.0, 0.0, 0.0);
+
+        entity.own_vehicle_velocity_vector_camcoords = convertCoordinateSystem(own_vehicle_velocity, m_camForwardVector, m_camRightVector, m_camUpVector);
+
+        entity.entity_velocity_vector_camcoords = convertCoordinateSystem(entity_velocity, m_camForwardVector, m_camRightVector, m_camUpVector);
+
+
+
         log("End of getEntityVector");
     }
 
@@ -1626,7 +1638,6 @@ void ObjectDetection::setPedsList() {
 void ObjectDetection::setFilenames() {
     //These are standard files
     m_imgFilename = getStandardFilename("image_2", ".png");
-    m_veloFilename = getStandardFilename("velodyne", ".bin");
     m_depthFilename = getStandardFilename("depth", ".bin");
     m_stencilFilename = getStandardFilename("stencil", ".raw");
     m_labelsFilename = getStandardFilename("label_2", ".txt");
@@ -1637,6 +1648,8 @@ void ObjectDetection::setFilenames() {
     m_velo_idealFileName = getStandardFilename("velodyne_ideal", ".bin");
     m_velo_zeroFileName = getStandardFilename("velodyne_zero", ".bin");
     m_velo_velocityFileName = getStandardFilename("velodyne_velocity", ".bin");
+    m_velo_EntityFilename = getStandardFilename("velodyne_entity", ".bin");
+    m_velo_velocityIdealFilename = getStandardFilename("velodyne_velocity_ideal", ".bin");
 
 
     //TODO - Why are two seg images being printed (there are some minor differences in images it appears)
@@ -1709,6 +1722,7 @@ void ObjectDetection::collectLiDAR() {
     float* EntityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
     float* ZeroIntensityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
     float* VelocityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* VelocityIdealArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
 
     int i = 0, k=0;
     while( i < (pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS)) {
@@ -1735,30 +1749,39 @@ void ObjectDetection::collectLiDAR() {
         *(ZeroIntensityArray + i + 2) = pointCloud[k + 2];
         *(ZeroIntensityArray + i + 3) = pointCloud[k + 5];
 
-        // Use case: Zero intensity dataset -> all points have 0 intensity
-        // *(p + 5)
-        *(ZeroIntensityArray + i) = pointCloud[k];
-        *(ZeroIntensityArray + i + 1) = pointCloud[k + 1];
-        *(ZeroIntensityArray + i + 2) = pointCloud[k + 2];
-        *(ZeroIntensityArray + i + 3) = pointCloud[k + 5];
 
-        // Use case: Zero intensity dataset -> all points have 0 intensity
-        // *(p + 5)
+        // Use case: Relative velocity dataset -> all points have relative velocity
+        // *(p + 6)
         *(VelocityArray + i) = pointCloud[k];
         *(VelocityArray + i + 1) = pointCloud[k + 1];
         *(VelocityArray + i + 2) = pointCloud[k + 2];
         *(VelocityArray + i + 3) = pointCloud[k + 6];
 
+        // Use case: Ideal velocity segmentation -> all 'Car' points have absolute velocity, others 0.
+        // *(p + 7)
+        *(VelocityIdealArray + i) = pointCloud[k];
+        *(VelocityIdealArray + i + 1) = pointCloud[k + 1];
+        *(VelocityIdealArray + i + 2) = pointCloud[k + 2];
+        *(VelocityIdealArray + i + 3) = pointCloud[k + 7];
+
+
 
         i += 4; //Update according to output pointclouds dimensions
-        k += 7; //Update according to  lidar.GetPointClouds() dimensions (FLOATS_PER_POINT)
+        k += 8; //Update according to  lidar.GetPointClouds() dimensions (FLOATS_PER_POINT)
     }
 
     /* -------------------------- OUTPUT FILES -------------------------------------------------------*/
 
+
+    // ONLY USED FOR DEBUGGING
+    //std::ofstream ofile(m_veloFilename, std::ios::binary);
+    //ofile.write((char*)pointCloud, 15 * sizeof(float) * pointCloudSize);
+    //ofile.close();
+
+
     // No use case: entity ID as intensity
-    // Folder: velodyne
-    std::ofstream ofile(m_veloFilename, std::ios::binary);
+    // Folder: velodyne_entity
+    std::ofstream ofile(m_velo_EntityFilename, std::ios::binary);
     ofile.write((char*)EntityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
     ofile.close();
 
@@ -1780,6 +1803,12 @@ void ObjectDetection::collectLiDAR() {
     std::ofstream ofilevel(m_velo_velocityFileName, std::ios::binary);
     ofilevel.write((char*)VelocityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
     ofilevel.close();
+
+    // USE CASE: Ideal velocity dataset -> relative velocity on each point
+    // Folder: velodyne_velocity
+    std::ofstream ofilevelideal(m_velo_velocityIdealFilename, std::ios::binary);
+    ofilevelideal.write((char*)VelocityIdealArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofilevelideal.close();
 
 
 
@@ -2461,7 +2490,12 @@ void ObjectDetection::exportEntity(ObjEntity e, std::ostringstream& oss, bool un
     if (augmented) {
         int vPedIsIn = e.isPedInV ? e.vPedIsIn : 0;
         oss << " " << e.entityID << " " << e.pointsHit2D << " " << e.pointsHit3D << " " << e.speed << " "
-            << e.roll << " " << e.pitch << " " << e.modelString << " " << vPedIsIn << " " << e.object_vel_vector.x << " " << e.object_vel_vector.y << " " << e.object_vel_vector.z << " " << e.ownvehicle_vel_vector.x << " " << e.ownvehicle_vel_vector.y << " " << e.ownvehicle_vel_vector.z << " " << e.SpeedVectorWC.x << " " << e.SpeedVectorWC.y << " " << e.SpeedVectorWC.z;
+            << e.roll << " " << e.pitch << " " << e.modelString << " " << vPedIsIn << " " << e.entity_velocity_vector.x << " " << e.entity_velocity_vector.y 
+            << " " << e.entity_velocity_vector.z << " " << e.own_vehicle_velocity_vector.x << " " << e.own_vehicle_velocity_vector.y << " " 
+            << e.own_vehicle_velocity_vector.z  << " " << e.entity_world_coordinates.x << " " << e.entity_world_coordinates.y << " "
+            << e.entity_world_coordinates.z << " " << e.player_world_coordinates.x << " " << e.player_world_coordinates.y << " " << e.player_world_coordinates.z 
+            << " " << e.entity_velocity_vector_camcoords.x << " " << e.entity_velocity_vector_camcoords.y << " " << e.entity_velocity_vector_camcoords.z
+            << " " << e.own_vehicle_velocity_vector_camcoords.x << " " << e.own_vehicle_velocity_vector_camcoords.y << " " << e.own_vehicle_velocity_vector_camcoords.z;
     }
     oss << "\n";
 }

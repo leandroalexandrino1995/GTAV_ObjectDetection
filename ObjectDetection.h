@@ -116,7 +116,6 @@ private:
     cv::Mat m_depthMat = cv::Mat::zeros(cv::Size(s_camParams.width, s_camParams.height), CV_32FC1);
 
     std::string m_imgFilename;
-    std::string m_veloFilename;
     std::string m_depthFilename;
     std::string m_depthPCFilename;
     std::string m_depthImgFilename;
@@ -142,6 +141,8 @@ private:
     std::string m_velo_idealFileName;
     std::string m_velo_zeroFileName;
     std::string m_velo_velocityFileName;
+    std::string m_velo_EntityFilename;
+    std::string m_velo_velocityIdealFilename;
 
     bool vehicles_created = false;
     std::vector<VehicleToCreate> vehiclesToCreate;

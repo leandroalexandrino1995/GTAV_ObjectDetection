@@ -686,25 +686,52 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
                 *(p + 4) = 0;
                 *(p + 3) = 0;
             }
+            /* TESTE */
+            Vector3 vehicleForwardVector, vehicleRightVector, vehicleUpVector, currentPos;
+            ENTITY::GET_ENTITY_MATRIX(ownVehicleID, &vehicleForwardVector, &vehicleRightVector, &vehicleUpVector, &currentPos); //Blue or red pill
+
+            /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: POINT ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
+                                                   /* :::::: GROUND POINT COORDINATES :::::: */
+            //Convert the camera value to the ground point in world coordinates. Requires axis transformation.
+
+            Vector3 cameravalue;
+            cameravalue.x = vec_cam_coord.x;
+            cameravalue.y = vec_cam_coord.y;
+            cameravalue.z = vec_cam_coord.z;
+
+            //PreSIL function to convert camera coordinates to world coordinates.
+            Vector3 ground_point_coordinates = camToWorld(cameravalue, cameraForwardVec, cameraRightVec, cameraUpVec);
+            
 
             /* ----------------------------------------------------- NO USE CASE: ENTITY ID FOR IDEAL SEGMENTATION -----------------------------------------------------*/
             //Intensity value will be 0 for every point.
-            //if (entityID != ownVehicleID && type == "Car") {
-            if (type == "Car") {
+            if (entityID != ownVehicleID) {
                 *(p + 3) = entityID;
             }
             else {
                 *(p + 3) = 0;
             }
 
+
             /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
             /* ----------------------------------------------------- USE CASE: IDEAL  DATASET -------------------------------------------------------------*/
             //Intensity value will be 1 for every object of the 'Car' class (ideal segmentation).
+
+            float ObjectSpeed = ENTITY::GET_ENTITY_SPEED(entityID);
+
             if (type == "Car" && entityID != ownVehicleID) { //if the model is a 'Car' and not the player's vehicle, intensity is 1
                 *(p + 4) = 1.0;
+                if (VEHICLE::IS_VEHICLE_STOPPED(entityID)) {
+                    *(p + 7) = 0.0;
+                }
+                else {
+                    *(p + 7) = ObjectSpeed;
+                }
+                
             }
             else { //model is not a 'Car' or points are from player's own vehicle
                 *(p + 4) = 0.0;
+                *(p + 7) = 0.0;
             }
             /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -727,43 +754,7 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
             //Obtain the coordinates of the vehicle the player is using.
             Vector3 player_coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(ownVehicleID, 0.0, 0.0, 0.0);
 
-            /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: OBJECT ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
 
-                                                                    /* :::::: OBJECT VELOCITY :::::: */
-            //Obtain the velocity vector of the vehicle the player is using.
-            Vector3 object_vel_vect = ENTITY::GET_ENTITY_SPEED_VECTOR(entityID, false);
-            float InstantaneousSpeedObject = ENTITY::GET_ENTITY_SPEED(entityID);
-
-            bool isPedEnt = ENTITY::IS_ENTITY_A_PED(entityID) && PED::GET_PED_TYPE(entityID) != 28;
-            bool isVehEnt = ENTITY::IS_ENTITY_A_VEHICLE(entityID);
-            bool stationaryObjt;
-
-            bool stationaryVehicle = VEHICLE::IS_VEHICLE_STOPPED(entityID);
-            bool stationaryPed = PED::IS_PED_STOPPED(entityID);
-
-            if (isPedEnt || isVehEnt) {
-                if (stationaryPed || stationaryVehicle) {
-                    stationaryObjt = true;
-                }
-                else{
-                    stationaryObjt = false;
-                }
-            }
-            else{
-                  stationaryObjt = false;
-            }
-
-             /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: POINT ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
-                                                                /* :::::: GROUND POINT COORDINATES :::::: */
-             //Convert the camera value to the ground point in world coordinates. Requires axis transformation.
-
-             Vector3 cameravalue;
-             cameravalue.x = -vec_cam_coord.x;
-             cameravalue.y = vec_cam_coord.y;
-             cameravalue.z = vec_cam_coord.z;
-
-             //PreSIL function to convert camera coordinates to world coordinates.
-             Vector3 ground_point_coordinates = camToWorld(cameravalue, cameraForwardVec, cameraRightVec, cameraUpVec);
 
              /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: LIDAR ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
                                                                     /* :::::: LIDAR POSITION :::::: */
@@ -771,122 +762,87 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
              //vehicle or pedestrian.
              float groundZ_player;
              GAMEPLAY::GET_GROUND_Z_FOR_3D_COORD(player_coords.x, player_coords.y, player_coords.z, &(groundZ_player), 0);
+
              Vector3 PlayerPoint;
-             PlayerPoint.x = player_coords.x + 0;
-             PlayerPoint.y = player_coords.y + 0;
+             PlayerPoint.x = player_coords.x;
+             PlayerPoint.y = player_coords.y;
              PlayerPoint.z = groundZ_player + 1.73;
 
-                                                                /* :::::: GROUND ECHO ANGLE :::::: */
+
             //Obtain the relative position of the ground point. Thus, obtaining the distance from the vehicle to the ground point.
             Vector3 VectorDeltaPos;
             VectorDeltaPos.x = ground_point_coordinates.x - PlayerPoint.x;
             VectorDeltaPos.y = ground_point_coordinates.y - PlayerPoint.y;
             VectorDeltaPos.z = ground_point_coordinates.z - PlayerPoint.z;
 
-            //Calculate the distance from the Z-axis (up) to the X-Y plane. 
-            float xydistance = sqrt(pow(VectorDeltaPos.x, 2) + pow(VectorDeltaPos.y, 2));
 
-            //Obtain the elevation angle
-            float elevationval = atan2(VectorDeltaPos.z, xydistance);
-            float elevationtoDegree = elevationval * 180 / PI; /* DEBUG ONLY*/
+            Vector3 VectorDeltaVelocity;
+            Vector3 velocity_point = ENTITY::GET_ENTITY_SPEED_VECTOR(entityID, false);
+            float ObjectInstantaneousSpeed= sqrt(pow(velocity_point.x, 2) + pow(velocity_point.y, 2) + pow(velocity_point.z, 2));
 
 
-                                                                    /* :::::: DIRECTION :::::: */
-            // Obtain direction only on objects that are moving
-            if ((entityID != 0) && (entityID != ownVehicleID) && (stationaryObjt == false)) {
-                /* ------------------------------------ POSITION  ------------------------------------ */
-                // Collect object and player vehicle coordinates
-
-                Vector3 object_coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(entityID, 0.0, 0.0, 0.0);
-
-                Vector3 world_coord_diff;
-                world_coord_diff.x = object_coords.x - player_coords.x;
-                world_coord_diff.y = object_coords.y - player_coords.y;
-                world_coord_diff.z = object_coords.z - player_coords.z;
-
-                float norm_world_coords = sqrt(pow(world_coord_diff.x, 2) + pow(world_coord_diff.y, 2) + pow(world_coord_diff.z, 2));
-
-                /* ------------------------------------  VELOCITY ------------------------------------ */
-                // Obtain object and player vehicle velocity vectors
-
-                // VELOCITY
-                Vector3 object_vel_vect = ENTITY::GET_ENTITY_SPEED_VECTOR(entityID, false);
-
-                Vector3 object_rel_vel_vect;
-                object_rel_vel_vect.x = object_vel_vect.x - velocity_player.x;
-                object_rel_vel_vect.y = object_vel_vect.y - velocity_player.y;
-                object_rel_vel_vect.z = object_vel_vect.z - velocity_player.z;
-
-                /* ------------------------------------  GRADIENT TO DIRECTION  ------------------------------------ */
-                float InstantaneousSpeed = sqrt(pow(object_rel_vel_vect.x, 2) + pow(object_rel_vel_vect.y, 2) + pow(object_rel_vel_vect.z, 2));
-
-                float CurrentDist = norm_world_coords;
-                float t =1; //scale factor 1 for simplicity
-
-                Vector3 New_Positionplayer;
-                New_Positionplayer.x = player_coords.x + velocity_player.x * t;
-                New_Positionplayer.y = player_coords.y + velocity_player.y * t;
-                New_Positionplayer.z = player_coords.z + velocity_player.z * t;
-
-                Vector3 New_PositionObject;
-                New_PositionObject.x = object_coords.x + object_vel_vect.x * t;
-                New_PositionObject.y = object_coords.y + object_vel_vect.y * t;
-                New_PositionObject.z = object_coords.z + object_vel_vect.z * t;
-
-                Vector3 New_Distance2;
-                New_Distance2.x = New_Positionplayer.x - New_PositionObject.x;
-                New_Distance2.y = New_Positionplayer.y - New_PositionObject.y;
-                New_Distance2.z = New_Positionplayer.z - New_PositionObject.z;
-
-                float FuturePos = sqrt(pow(New_Distance2.x, 2) + pow(New_Distance2.y, 2) + pow(New_Distance2.z, 2));
-
-                float RelativeSpeed ;
-                if (FuturePos > CurrentDist) { //departing
-                    RelativeSpeed = InstantaneousSpeed;
+            bool isEntityStoppedFlag = false;
+            if (ENTITY::IS_ENTITY_A_VEHICLE(entityID)) {
+                if (VEHICLE::IS_VEHICLE_STOPPED(entityID)) {
+                    isEntityStoppedFlag = true;
                 }
-                else if (FuturePos == CurrentDist) { //same speed
-                    RelativeSpeed = 0;
-                } 
-                else { //approaching
-                    RelativeSpeed = -InstantaneousSpeed;
+            }
+            if (ENTITY::IS_ENTITY_A_PED(entityID)) {
+                if (PED::IS_PED_STOPPED(entityID)) {
+                    isEntityStoppedFlag = true;
                 }
-
-                ///* ---------------------------------------- MEASURED SPEED ---------------------------------------- */
-                //Cosine effect error of the velocity on the point.
-                float velocityMeasuredLidar = RelativeSpeed  * cos(elevationval);
-
-                *(p + 6) = velocityMeasuredLidar;
             }
-            else if (((entityID == 0) || (stationaryObjt == true)) && (entityID != ownVehicleID)) {
-                /* ---------------------------------------- VELOCITY ------------------------------------------*/
-                //Get the player vehicle velocity vector [Vx,Vy,Vz] through a native function.
 
-                //Create a ground velocity vector. As there are no natives to acquire point velocity (only for entitys),
-                //manually create a vector with 0 velocity in each component.
-                Vector3 ground_velocity;
-                ground_velocity.x = 0;
-                ground_velocity.y = 0;
-                ground_velocity.z = 0;
-
-                //Relative velocity can be infered by subtracting each component
-                Vector3 GroundRelativeVelocity;
-                GroundRelativeVelocity.x = ground_velocity.x - velocity_player.x;
-                GroundRelativeVelocity.y = ground_velocity.y - velocity_player.y;
-                GroundRelativeVelocity.z = ground_velocity.z - velocity_player.z;
-
-
-
-                /* ---------------------------------------- MEASURED SPEED ---------------------------------------- */
-                //Cosine effect error of the velocity on the point.
-                float InstantaneousSpeed = sqrt(pow(GroundRelativeVelocity.x, 2) + pow(GroundRelativeVelocity.y, 2) + pow(GroundRelativeVelocity.z, 2));
-
-                /* ---------------------------------------- MEASURED SPEED ---------------------------------------- */
-                //Cosine effect error of the velocity on the point.
-                float velocityMeasuredLidar = -InstantaneousSpeed * cos(elevationval);
-
-                *(p + 6) = velocityMeasuredLidar;
+            if (entityID == 0 || isEntityStoppedFlag) {
+                VectorDeltaVelocity.x = 0 - velocity_player.x;
+                VectorDeltaVelocity.y = 0 - velocity_player.y;
+                VectorDeltaVelocity.z = 0 - velocity_player.z;
             }
-            /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
+            else {
+                VectorDeltaVelocity.x = velocity_point.x - velocity_player.x;
+                VectorDeltaVelocity.y = velocity_point.y - velocity_player.y;
+                VectorDeltaVelocity.z = velocity_point.z - velocity_player.z;
+            }
+
+            float distance_magnitude = sqrt(pow(VectorDeltaPos.x, 2) + pow(VectorDeltaPos.y, 2) + pow(VectorDeltaPos.z, 2));
+            float velocity_magnitude = sqrt(pow(VectorDeltaVelocity.x, 2) + pow(VectorDeltaVelocity.y, 2) + pow(VectorDeltaVelocity.z, 2));
+
+
+            float dotproduct_r_x = (VectorDeltaVelocity.x * VectorDeltaPos.x) + (VectorDeltaVelocity.y * VectorDeltaPos.y) + (VectorDeltaVelocity.z * VectorDeltaPos.z);
+
+            
+
+            float radial_speed = dotproduct_r_x / distance_magnitude;
+
+            if (velocity_magnitude == 0 || entityID==ownVehicleID) {
+                *(p + 6) = 0.0;
+            }
+            else {
+                *(p + 6) = radial_speed;
+            }
+
+            
+            // Separate each case for easy debugging
+            //if (entityID != ownVehicleID && entityID == 0){ //ground testing
+            //    *(p + 6) = radial_speed;
+            //}else {
+            //    *(p + 6) = 0;
+            //}
+
+            //if (entityID != ownVehicleID && ObjectInstantaneousSpeed < 0.2 && entityID != 0) { //ground testing
+            //    *(p + 6) = radial_speed;
+            //}
+            //else {
+            //    *(p + 6) = 0;
+            //}
+
+            //if (entityID != ownVehicleID && entityID != 0) { //Object velocity testing
+            //    *(p + 6) = radial_speed;
+            //}
+            //else {
+            //    *(p + 6) = 0;
+            //}
+
 
             ++m_pointsHit;
             ++m_depthMapPoints;
