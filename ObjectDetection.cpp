@@ -1644,12 +1644,14 @@ void ObjectDetection::setFilenames() {
     m_labelsAugFilename = getStandardFilename("label_aug_2", ".txt");
     m_calibFilename = getStandardFilename("calib", ".txt");
 
-    //Use case files
-    m_velo_idealFileName = getStandardFilename("velodyne_ideal", ".bin");
-    m_velo_zeroFileName = getStandardFilename("velodyne_zero", ".bin");
-    m_velo_velocityFileName = getStandardFilename("velodyne_velocity", ".bin");
+    //Added files
+    m_velo_gt_CarFileName = getStandardFilename("velodyne_1A_isCar", ".bin");
+    m_velo_zeroFileName = getStandardFilename("velodyne_5_xyz", ".bin");
+    m_velo_radial_velocityFileName = getStandardFilename("velodyne_2_radial_velocity", ".bin");
     m_velo_EntityFilename = getStandardFilename("velodyne_entity", ".bin");
-    m_velo_velocityIdealFilename = getStandardFilename("velodyne_velocity_ideal", ".bin");
+    m_velo_abs_speedFilename = getStandardFilename("velodyne_3_car_absolute_speed", ".bin");
+    m_velo_movingFilename = getStandardFilename("velodyne_4_is_car_moving", ".bin");
+    m_velo_gt_pedFileName = getStandardFilename("velodyne_1B_isPed", ".bin");
 
 
     //TODO - Why are two seg images being printed (there are some minor differences in images it appears)
@@ -1718,16 +1720,18 @@ void ObjectDetection::collectLiDAR() {
     uint OUTPUT_POINTCLOUD_POINTS = 4;
 
     // Create new arrays with the points as pointCloud will have all the offsets.
-    float* IdealArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* GTCarArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* GTPedArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
     float* EntityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
     float* ZeroIntensityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
-    float* VelocityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
-    float* VelocityIdealArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* RadialVelocityArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* AbsSpeedArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
+    float* MovingArray = new float[pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS];
 
     int i = 0, k=0;
     while( i < (pointCloudSize * sizeof(float) * OUTPUT_POINTCLOUD_POINTS)) {
 
-        // No use case: intensity is the entity ID of each object
+        // Default output by PreSIL: intensity is the entity ID of each object
         // *(p + 3)
         *(EntityArray + i) = pointCloud[k];
         *(EntityArray + i + 1) = pointCloud[k + 1];
@@ -1735,14 +1739,14 @@ void ObjectDetection::collectLiDAR() {
         *(EntityArray + i + 3) = pointCloud[k + 3];
 
 
-        // Use case: Ideal dataset -> 'Car' labeled objects = 1, others = '0'
+        // PC: Ideal dataset -> 'Car' labeled objects = 1, others = '0'
         // *(p + 4)
-        *(IdealArray + i) = pointCloud[k];
-        *(IdealArray + i + 1) = pointCloud[k + 1];
-        *(IdealArray + i + 2) = pointCloud[k + 2];
-        *(IdealArray + i + 3) = pointCloud[k + 4];
+        *(GTCarArray + i) = pointCloud[k];
+        *(GTCarArray + i + 1) = pointCloud[k + 1];
+        *(GTCarArray + i + 2) = pointCloud[k + 2];
+        *(GTCarArray + i + 3) = pointCloud[k + 4];
 
-        // Use case: Zero intensity dataset -> all points have 0 intensity
+        // PC: Zero intensity dataset -> all points have 0 intensity
         // *(p + 5)
         *(ZeroIntensityArray + i) = pointCloud[k];
         *(ZeroIntensityArray + i + 1) = pointCloud[k + 1];
@@ -1750,24 +1754,38 @@ void ObjectDetection::collectLiDAR() {
         *(ZeroIntensityArray + i + 3) = pointCloud[k + 5];
 
 
-        // Use case: Relative velocity dataset -> all points have relative velocity
+        // PC: Relative velocity dataset -> all points have relative velocity
         // *(p + 6)
-        *(VelocityArray + i) = pointCloud[k];
-        *(VelocityArray + i + 1) = pointCloud[k + 1];
-        *(VelocityArray + i + 2) = pointCloud[k + 2];
-        *(VelocityArray + i + 3) = pointCloud[k + 6];
+        *(RadialVelocityArray + i) = pointCloud[k];
+        *(RadialVelocityArray + i + 1) = pointCloud[k + 1];
+        *(RadialVelocityArray + i + 2) = pointCloud[k + 2];
+        *(RadialVelocityArray + i + 3) = pointCloud[k + 6];
 
-        // Use case: Ideal velocity segmentation -> all 'Car' points have absolute velocity, others 0.
+        // PC: 'Car' absolute speed dataset -> all 'Car' points have absolute velocity, others 0.
         // *(p + 7)
-        *(VelocityIdealArray + i) = pointCloud[k];
-        *(VelocityIdealArray + i + 1) = pointCloud[k + 1];
-        *(VelocityIdealArray + i + 2) = pointCloud[k + 2];
-        *(VelocityIdealArray + i + 3) = pointCloud[k + 7];
+        *(AbsSpeedArray + i) = pointCloud[k];
+        *(AbsSpeedArray + i + 1) = pointCloud[k + 1];
+        *(AbsSpeedArray + i + 2) = pointCloud[k + 2];
+        *(AbsSpeedArray + i + 3) = pointCloud[k + 7];
+
+        // PC: 'Car' is moving -> all moving 'Car' points have 1.0 Boolean value, others 0.0.
+        // *(p + 8)
+        *(MovingArray + i) = pointCloud[k];
+        *(MovingArray + i + 1) = pointCloud[k + 1];
+        *(MovingArray + i + 2) = pointCloud[k + 2];
+        *(MovingArray + i + 3) = pointCloud[k + 8];
+
+        // PC: Ideal dataset -> 'Car' labeled objects = 1, others = '0'
+        // *(p + 9)
+        *(GTPedArray + i) = pointCloud[k];
+        *(GTPedArray + i + 1) = pointCloud[k + 1];
+        *(GTPedArray + i + 2) = pointCloud[k + 2];
+        *(GTPedArray + i + 3) = pointCloud[k + 9];
 
 
 
         i += 4; //Update according to output pointclouds dimensions
-        k += 8; //Update according to  lidar.GetPointClouds() dimensions (FLOATS_PER_POINT)
+        k += 10; //Update according to  lidar.GetPointClouds() dimensions (FLOATS_PER_POINT)
     }
 
     /* -------------------------- OUTPUT FILES -------------------------------------------------------*/
@@ -1785,30 +1803,42 @@ void ObjectDetection::collectLiDAR() {
     ofile.write((char*)EntityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
     ofile.close();
 
-    // USE CASE: Ideal dataset -> Car = 1, others = 0
-    // Folder: velodyne_ideal
-    std::ofstream ofileideal(m_velo_idealFileName, std::ios::binary);
-    ofileideal.write((char*)IdealArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
-    ofileideal.close();
+    // USE CASE: GT dataset 'Car' -> Car = 1.0, others = 0.0
+    // Folder: velodyne_1A_isCar
+    std::ofstream ofilegtCar(m_velo_gt_CarFileName, std::ios::binary);
+    ofilegtCar.write((char*)GTCarArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofilegtCar.close();
 
-    // USE CASE: Zero intensity dataset -> all = 0
-    // Folder: velodyne_zero
+    // USE CASE: Zero intensity dataset -> all = 0.0
+    // Folder: velodyne_5_xyz
     std::ofstream ofilezero(m_velo_zeroFileName, std::ios::binary);
     ofilezero.write((char*)ZeroIntensityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
     ofilezero.close();
 
 
-    // USE CASE: Velocity dataset -> relative velocity on each point
-    // Folder: velodyne_velocity
-    std::ofstream ofilevel(m_velo_velocityFileName, std::ios::binary);
-    ofilevel.write((char*)VelocityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    // PC: Radial velocity -> relative velocity on each point
+    // Folder: velodyne_2_radial_velocity
+    std::ofstream ofilevel(m_velo_radial_velocityFileName, std::ios::binary);
+    ofilevel.write((char*)RadialVelocityArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
     ofilevel.close();
 
-    // USE CASE: Ideal velocity dataset -> relative velocity on each point
-    // Folder: velodyne_velocity
-    std::ofstream ofilevelideal(m_velo_velocityIdealFilename, std::ios::binary);
-    ofilevelideal.write((char*)VelocityIdealArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
-    ofilevelideal.close();
+    // PC: Absolute velocity -> absolute velocity on each point
+    // Folder: velodyne_3_car_absolute_speed
+    std::ofstream ofilespeed(m_velo_abs_speedFilename, std::ios::binary);
+    ofilespeed.write((char*)AbsSpeedArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofilespeed.close();
+
+    // PC: GT 'Pedestrian' -> Pedestrian = 1.0, others =  0.0
+    // Folder: velodyne_1B_isPed
+    std::ofstream ofilegtPed(m_velo_gt_pedFileName, std::ios::binary);
+    ofilegtPed.write((char*)GTPedArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofilegtPed.close();
+
+    // PC: Is 'Car' moving -> Moving 'Car' = 1.0, others = 0.0
+    // Folder: velodyne_1B_isPed
+    std::ofstream ofilemoving(m_velo_movingFilename, std::ios::binary);
+    ofilemoving.write((char*)MovingArray, OUTPUT_POINTCLOUD_POINTS * sizeof(float) * pointCloudSize);
+    ofilemoving.close();
 
 
 

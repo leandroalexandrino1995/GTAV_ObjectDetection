@@ -713,8 +713,18 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
             }
 
 
+            /* ----------------------------------------------------- Point cloud: Ground truth 'Pedestrian'  -------------------------------------------------------------*/
+            if (ENTITY::IS_ENTITY_A_PED(entityID)) {
+                *(p + 9) = 1.0;
+            }
+            else {
+                *(p + 9) = 0;
+            }
+
+
+
             /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
-            /* ----------------------------------------------------- USE CASE: IDEAL  DATASET -------------------------------------------------------------*/
+            /* ----------------------------------------------------- Point cloud: Ground truth 'Car'  -------------------------------------------------------------*/
             //Intensity value will be 1 for every object of the 'Car' class (ideal segmentation).
 
             float ObjectSpeed = ENTITY::GET_ENTITY_SPEED(entityID);
@@ -723,31 +733,43 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
                 *(p + 4) = 1.0;
                 if (VEHICLE::IS_VEHICLE_STOPPED(entityID)) {
                     *(p + 7) = 0.0;
+                    *(p + 8) = 0.0;
                 }
                 else {
                     *(p + 7) = ObjectSpeed;
+                    *(p + 8) = 1.0;
                 }
                 
             }
             else { //model is not a 'Car' or points are from player's own vehicle
                 *(p + 4) = 0.0;
                 *(p + 7) = 0.0;
+                *(p + 8) = 0.0;
             }
+
             /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
 
 
-            /* ----------------------------------------------------- USE CASE: ZERO INTENSITY DATASET -----------------------------------------------------*/
+            /* ----------------------------------------------------- Point cloud: ZERO INTENSITY -----------------------------------------------------*/
             // Every point of the pointcloud has 0 intensity.
             *(p + 5) = 0.0;
             /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
             
 
-            /* ----------------------------------------------------------- USE CASE: VELOCITY DATASET ------------------------------------------------------*/
+            /* ----------------------------------------------------------- Point cloud: radial VELOCITY  ------------------------------------------------------*/
             // Obtain relative velocity in every point of the point cloud.
             /* :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: PLAYER ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
                                                                     /* :::::: PLAYER VELOCITY :::::: */
             //Obtain the velocity vector of the vehicle the player is using.
-            Vector3 velocity_player = ENTITY::GET_ENTITY_SPEED_VECTOR(ownVehicleID, false);
+            Vector3 velocity_player;
+            if (VEHICLE::IS_VEHICLE_STOPPED(ownVehicleID)) {
+                velocity_player.x = 0;
+                velocity_player.y = 0;
+                velocity_player.z = 0;
+            }else {
+                velocity_player = ENTITY::GET_ENTITY_SPEED_VECTOR(ownVehicleID, false);
+            }
+
             float InstantaneousSpeedPlayer = ENTITY::GET_ENTITY_SPEED(ownVehicleID);
 
                                                                    /* :::::: PLAYER COORDINATES :::::: */

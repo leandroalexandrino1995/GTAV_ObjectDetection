@@ -138,11 +138,13 @@ private:
     std::string m_depthPCFilenameU;
 
     /* FILES FOR USE-CASES */
-    std::string m_velo_idealFileName;
+    std::string m_velo_gt_CarFileName;
     std::string m_velo_zeroFileName;
-    std::string m_velo_velocityFileName;
+    std::string m_velo_radial_velocityFileName;
     std::string m_velo_EntityFilename;
-    std::string m_velo_velocityIdealFilename;
+    std::string m_velo_abs_speedFilename;
+    std::string m_velo_movingFilename;
+    std::string m_velo_gt_pedFileName;
 
     bool vehicles_created = false;
     std::vector<VehicleToCreate> vehiclesToCreate;
