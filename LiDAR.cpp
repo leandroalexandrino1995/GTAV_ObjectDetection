@@ -660,6 +660,8 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
             *(p + 4) = 0;
             *(p + 5) = 0;
             *(p + 6) = 0;
+            *(p + 7) = 0;
+            *(p + 8) = 0;
             //Need to do -0.5 as indexing starts at 0
             int i = floor(target2D(0) * s_camParams.width - 0.5);
             int j = floor(target2D(1) * s_camParams.height - 0.5);
