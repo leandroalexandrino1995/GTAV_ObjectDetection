@@ -732,22 +732,22 @@ void LiDAR::GenerateSinglePoint(float phi, float theta, float* p)
             float ObjectSpeed = ENTITY::GET_ENTITY_SPEED(entityID);
 
             if (type == "Car" && entityID != ownVehicleID) { //if the model is a 'Car' and not the player's vehicle, intensity is 1
-                *(p + 4) = 1.0;
-                if (VEHICLE::IS_VEHICLE_STOPPED(entityID)) {
-                    *(p + 7) = 0.0;
-                    *(p + 8) = 0.0;
-                }
-                else {
-                    *(p + 7) = ObjectSpeed;
-                    *(p + 8) = 1.0;
-                }
-                
+                *(p + 4) = 1.0;           
             }
             else { //model is not a 'Car' or points are from player's own vehicle
                 *(p + 4) = 0.0;
+            }
+
+            // 0.05m/s from IS_VEHICLE_STOPPED native function
+            if (entityID != ownVehicleID && ObjectSpeed > 0.05) {
+                *(p + 7) = ObjectSpeed; // absolute speed PC
+                *(p + 8) = 1.0; // is moving PC
+            }
+            else {
                 *(p + 7) = 0.0;
                 *(p + 8) = 0.0;
             }
+     
 
             /*  -------------------------------------------------------------------------------------------------------------------------------------------*/
 

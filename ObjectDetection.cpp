@@ -1649,8 +1649,8 @@ void ObjectDetection::setFilenames() {
     m_velo_zeroFileName = getStandardFilename("velodyne_5_xyz", ".bin");
     m_velo_radial_velocityFileName = getStandardFilename("velodyne_2_radial_velocity", ".bin");
     m_velo_EntityFilename = getStandardFilename("velodyne_entity", ".bin");
-    m_velo_abs_speedFilename = getStandardFilename("velodyne_3_car_absolute_speed", ".bin");
-    m_velo_movingFilename = getStandardFilename("velodyne_4_is_car_moving", ".bin");
+    m_velo_abs_speedFilename = getStandardFilename("velodyne_3_absolute_speed", ".bin");
+    m_velo_movingFilename = getStandardFilename("velodyne_4_is_moving", ".bin");
     m_velo_gt_pedFileName = getStandardFilename("velodyne_1B_isPed", ".bin");
 
 
@@ -1761,21 +1761,21 @@ void ObjectDetection::collectLiDAR() {
         *(RadialVelocityArray + i + 2) = pointCloud[k + 2];
         *(RadialVelocityArray + i + 3) = pointCloud[k + 6];
 
-        // PC: 'Car' absolute speed dataset -> all 'Car' points have absolute velocity, others 0.
+        // PC: absolute speed point cloud -> all points have the absolute speed.
         // *(p + 7)
         *(AbsSpeedArray + i) = pointCloud[k];
         *(AbsSpeedArray + i + 1) = pointCloud[k + 1];
         *(AbsSpeedArray + i + 2) = pointCloud[k + 2];
         *(AbsSpeedArray + i + 3) = pointCloud[k + 7];
 
-        // PC: 'Car' is moving -> all moving 'Car' points have 1.0 Boolean value, others 0.0.
+        // PC: 'object is moving -> all moving object points have 1.0 Boolean value, others 0.0.
         // *(p + 8)
         *(MovingArray + i) = pointCloud[k];
         *(MovingArray + i + 1) = pointCloud[k + 1];
         *(MovingArray + i + 2) = pointCloud[k + 2];
         *(MovingArray + i + 3) = pointCloud[k + 8];
 
-        // PC: Ideal dataset -> 'Car' labeled objects = 1, others = '0'
+        // PC: Ideal dataset -> 'Pedestrian' labeled objects = 1, others = '0'
         // *(p + 9)
         *(GTPedArray + i) = pointCloud[k];
         *(GTPedArray + i + 1) = pointCloud[k + 1];
